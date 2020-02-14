@@ -34,8 +34,28 @@ if (!empty($_POST)) {
   }
 }
 
-$posts = $db->query('SELECT m.name,m.picture,p.* FROM members m ,posts p WHERE m.id=p.member_id ORDER BY p.created DESC LIMIT 0,5');
+$page = $_REQUEST['page'];
+
+if ($page == '') {
+  $page = 1;
+}
+
+$page = max($page, 1); //1より小さい数字の場合は、１が自動的に指定される
+
+//大きな数字を入力されたときの対処
+//最終ページを取得
+$counts = $db->query('SELECT COUNT(*) AS cnt FROM posts');  //postsのずを数える
+$cnt = $counts->fetch();    //メッセージの件数が入る
+$maxPage = ceil($cnt['cnt'] / 5);   //最終のページ数を5で割る
+$page = min($page, $maxPage);    // maxPage以上の数字にならない
+
+$start = ($page - 1) * 5;
+
+$posts = $db->prepare('SELECT m.name,m.picture,p.* FROM members m ,posts p WHERE m.id=p.member_id ORDER BY p.created DESC LIMIT ?,5');
 // LIMIT 0,5　先頭から５件を出力
+$posts->bindParam(1, $start, PDO::PARAM_INT);
+//executeを使うと文字列として渡ってしまうので、bindparamを使う
+$posts->execute();
 
 
 if (isset($_REQUEST['res'])) {
@@ -108,8 +128,17 @@ if (isset($_REQUEST['res'])) {
       <?php } ?>
 
       <ul class="paging">
-        <li><a href="index.php?page=">前のページへ</a></li>
-        <li><a href="index.php?page=">次のページへ</a></li>
+        <?php if ($page > 1) : ?>
+        <li><a href="index.php?page=<?php print($page - 1); ?>">前のページへ</a></li>
+        <?php else : ?>
+        <li>前のページへ</li>
+        <?php endif; ?>
+
+        <?php if ($page < $maxPage) : ?>
+        <li><a href="index.php?page=<?php print($page + 1); ?>">次のページへ</a></li>
+        <?php else : ?>
+        <li>次のページへ</li>
+        <?php endif; ?>
       </ul>
     </div>
   </div>
